@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      const suppress = (msg) => {
+        const str = typeof msg === 'string' ? msg : (msg && msg.message ? String(msg.message) : String(msg));
+        return str && (str.includes('The play() request was interrupted') || str.includes('AbortError') || str.includes('NotAllowedError'));
+      };
+      const origError = console.error;
+      console.error = function(...args) {
+        if (args.some(suppress)) return;
+        origError.apply(this, args);
+      };
+      const origWarn = console.warn;
+      console.warn = function(...args) {
+        if (args.some(suppress)) return;
+        origWarn.apply(this, args);
+      };
+      window.addEventListener('error', (e) => {
+        if (suppress(e.error) || suppress(e.message)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', (e) => {
+        if (suppress(e.reason)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+      }, true);
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+    <meta name="description" content="An application built with Google AI Studio." />
+    <meta property="og:title" content="My Google AI Studio App" />
+    <meta property="og:description" content="An application built with Google AI Studio." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

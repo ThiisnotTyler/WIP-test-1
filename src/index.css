@@ -1,0 +1,79 @@
+@import "tailwindcss";
+@theme {
+  --color-accent: var(--theme-accent);
+  --color-canvas-start: var(--theme-canvas-start);
+  --color-canvas-mid: var(--theme-canvas-mid);
+  --color-canvas-end: var(--theme-canvas-end);
+  --color-panel: var(--theme-panel);
+  --color-panel-solid: var(--theme-panel-solid);
+  --color-panel-hover: var(--theme-panel-hover);
+  --color-panel-border: var(--theme-panel-border);
+  --color-text-main: var(--theme-text-main);
+  --color-text-dim: var(--theme-text-dim);
+  --color-text-inv: var(--theme-text-inv);
+  --color-video-bg: var(--theme-video-bg);
+  --color-video-overlay: var(--theme-video-overlay);
+}
+
+:root {
+  --theme-accent: #FFCC00;
+  --theme-accent-rgb: 255, 204, 0;
+  
+  --theme-canvas-start: #122350;
+  --theme-canvas-mid: #0A132C;
+  --theme-canvas-end: #040814;
+  
+  --theme-panel: rgba(0, 0, 0, 0.4);
+  --theme-panel-solid: #0A192F;
+  --theme-panel-hover: rgba(255, 255, 255, 0.1);
+  --theme-panel-border: rgba(255, 255, 255, 0.2);
+  
+  --theme-text-main: #ffffff;
+  --theme-text-dim: rgba(255, 255, 255, 0.5);
+  --theme-text-inv: #000000;
+
+  --theme-video-bg: #000000;
+  --theme-video-overlay: rgba(0, 0, 0, 0.8);
+}
+
+:root[data-theme="frutiger"] {
+  --theme-accent: #059669;
+  --theme-accent-rgb: 5, 150, 105;
+  
+  --theme-canvas-start: #e0f2fe; 
+  --theme-canvas-mid: #bae6fd; 
+  --theme-canvas-end: #86efac; 
+  
+  --theme-panel: rgba(255, 255, 255, 0.55);
+  --theme-panel-solid: #f0f9ff;
+  --theme-panel-hover: rgba(255, 255, 255, 0.9);
+  --theme-panel-border: rgba(255, 255, 255, 0.9);
+  
+  --theme-text-main: #022c22;
+  --theme-text-dim: rgba(2, 44, 34, 0.7);
+  --theme-text-inv: #ffffff;
+
+  --theme-video-bg: #064e3b;
+  --theme-video-overlay: rgba(6, 78, 59, 0.8);
+}
+
+:root[data-theme="frutiger"] .bg-accent {
+  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+  border: 1px solid rgba(255,255,255,0.5);
+  box-shadow: inset 0 1px 3px rgba(255,255,255,0.8), 0 4px 6px rgba(0,0,0,0.1);
+  text-shadow: none;
+}
+
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+:root[data-theme="frutiger"] .crt-overlay {
+  display: none !important;
+}
