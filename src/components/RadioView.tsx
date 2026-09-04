@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search as SearchIcon, ChevronLeft, Filter, Music, Radio, Loader2 } from 'lucide-react';
+import { Search as SearchIcon, ChevronLeft, Filter, Music, Radio, Loader2, AlertTriangle } from 'lucide-react';
 import { getRadioServer } from '../services/radioBrowser';
 import { playSound } from '../utils/audio';
 import { filterSafeContent } from '../utils/contentFilter';
@@ -13,6 +13,7 @@ export const RadioView = ({ onBack, ageRestrictedMode, safeMode, favorites, togg
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,6 +23,7 @@ export const RadioView = ({ onBack, ageRestrictedMode, safeMode, favorites, togg
 
   const fetchStations = useCallback(async (currentOffset = 0, reset = false) => {
     setLoading(true);
+    setError(null);
     try {
       const baseUrl = await getRadioServer();
       const params = new URLSearchParams({
@@ -56,9 +58,19 @@ export const RadioView = ({ onBack, ageRestrictedMode, safeMode, favorites, togg
         isRadioStream: true
       }));
 
-      setStations(prev => reset ? formatted : [...prev, ...formatted]);
+      setStations(prev => {
+        if (reset) return formatted;
+        const newStations = [...prev];
+        formatted.forEach((s: any) => {
+          if (!newStations.find(existing => existing.id === s.id)) {
+            newStations.push(s);
+          }
+        });
+        return newStations;
+      });
       setOffset(currentOffset);
     } catch (e) {
+      setError("Failed to fetch stations. Please try again.");
       console.error("Radio fetch failed", e);
     } finally {
       setLoading(false);
@@ -165,10 +177,16 @@ export const RadioView = ({ onBack, ageRestrictedMode, safeMode, favorites, togg
       </div>
 
       <div className="flex-1 min-h-0 relative">
-        {loading && stations.length === 0 ? (
+                {loading && stations.length === 0 ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-text-dim">
             <Loader2 className="w-12 h-12 animate-spin mb-4 text-accent" />
             <p className="font-bold tracking-widest">TUNING FREQUENCIES...</p>
+          </div>
+        ) : error ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-text-dim px-4 text-center">
+            <AlertTriangle className="w-12 h-12 mb-4 text-red-500" />
+            <p className="font-bold tracking-widest text-red-500">{error}</p>
+            <button onClick={() => fetchStations(0, true)} className="mt-4 px-6 py-2 bg-panel-solid border border-panel-border rounded-lg hover:bg-panel text-text-main transition-colors font-bold">Try Again</button>
           </div>
         ) : (
           <DvrList

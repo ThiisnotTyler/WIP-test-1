@@ -1,13 +1,14 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   Network, Play, Volume2, Maximize, Minimize, Settings, SignalHigh, 
-  Activity, Radio, Menu, Video, Music, Info, Search as SearchIcon, User, Tv, Heart, Pause, X 
+  Activity, Radio, Menu, Video, Music, Info, Search as SearchIcon, User, Tv, Heart, Pause, X, AlertTriangle 
 } from 'lucide-react';
 
 import VideoPlayer from './VideoPlayer';
 import { playSound } from './utils/audio';
 import { filterSafeContent, filterAgeRestricted } from './utils/contentFilter';
 import { getRadioServer } from './services/radioBrowser';
+import { useMediaPlayer } from './hooks/useMediaPlayer';
 
 
 import { FEEDS, AUDIO, CHANNELS } from './data/mockData';
@@ -98,293 +99,45 @@ export default function App() {
     }
   }, [currentView]);
   
-  // Radio API State
-  const [radioStations, setRadioStations] = useState<any[]>([]);
-  const [radioOffset, setRadioOffset] = useState(0);
-  const [hasMoreRadio, setHasMoreRadio] = useState(true);
-  
-  // Audio Player State
-  const [activeMedia, setActiveMedia] = useState<any | null>(null);
-  const [adState, setAdState] = useState<'NONE' | 'PREROLL' | 'MAIN' | 'POSTROLL'>('NONE');
-  const [isPlaying, setIsPlaying] = useState(false);
-  const currentPlaybackUrl = React.useMemo(() => {
-    if (!activeMedia) return null;
-    if (adState === 'PREROLL' && activeMedia.preRollAd) return activeMedia.preRollAd;
-    if (adState === 'POSTROLL' && activeMedia.postRollAd) return activeMedia.postRollAd;
-    return activeMedia.url;
-  }, [activeMedia, adState]);
-  const [isPipExpanded, setIsPipExpanded] = useState(false);
-  const isAdPlaying = adState === 'PREROLL' || adState === 'POSTROLL';
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const [showUI, setShowUI] = useState(true);
-  const [scaleMode, setScaleMode] = useState<'contain' | 'cover'>('contain');
-
-  useEffect(() => {
-    let timeout: any;
-    const handleMouseMove = () => {
-      setShowUI(true);
-      clearTimeout(timeout);
-      if (isFullscreen) {
-        timeout = setTimeout(() => setShowUI(false), 3000);
-      }
-    };
-    
-    if (isFullscreen) {
-      window.addEventListener('mousemove', handleMouseMove);
-      timeout = setTimeout(() => setShowUI(false), 3000);
-    } else {
-      setShowUI(true);
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      clearTimeout(timeout);
-    };
-  }, [isFullscreen]);
-  const [volume, setVolume] = useState(0.5);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const videoPlayerRef = useRef<any>(null);
-
-  const [playedSeconds, setPlayedSeconds] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isSeeking, setIsSeeking] = useState(false);
-
-  const formatTime = (seconds: number) => {
-    if (!seconds || isNaN(seconds) || !isFinite(seconds)) return '0:00';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    if (h > 0) return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
-
-  const handleSeekChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
-    setPlayedSeconds(time);
-    if (activeMedia?.isVideo && videoPlayerRef.current) {
-      videoPlayerRef.current.seekTo(time);
-    } else if (audioRef.current) {
-      audioRef.current.currentTime = time;
-    }
-  }, [activeMedia]);
-  const activeMediaId = activeMedia?.url || activeMedia?.id;
+  const {
+    activeMedia,
+    activeMediaId,
+    adState,
+    isPlaying,
+    setIsPlaying,
+    isPipExpanded,
+    setIsPipExpanded,
+    isFullscreen,
+    setIsFullscreen,
+    showUI,
+    scaleMode,
+    setScaleMode,
+    volume,
+    setVolume,
+    playedSeconds,
+    setPlayedSeconds,
+    duration,
+    setDuration,
+    isSeeking,
+    setIsSeeking,
+    playbackError,
+    setPlaybackError,
+    audioRef,
+    videoPlayerRef,
+    isAdPlaying,
+    currentPlaybackUrl,
+    handlePlayMedia,
+    handleMediaEnded,
+    handleToggleFullscreen,
+    handleSeekChange,
+    formatTime,
+  } = useMediaPlayer();
 
   const toggleFavorite = useCallback((item: any) => {
     setFavorites(prev => prev.some(f => f.id === item.id) ? prev.filter(f => f.id !== item.id) : [...prev, item]);
   }, []);
-  
-  const loadRadioStations = useCallback(async (offset: number) => {
-    try {
-      const baseUrl = await getRadioServer();
-      const res = await fetch(`${baseUrl}/json/stations/search?limit=30&offset=${offset}&hidebroken=true&order=clickcount&reverse=true&is_https=true`);
-      const data = await res.json();
-      if (data.length === 0) setHasMoreRadio(false);
-      
-      const formatted = data.map((s: any) => ({
-        id: s.stationuuid,
-        title: s.name.trim() || 'Unknown Station',
-        desc: s.tags ? `Tags: ${s.tags.split(',').slice(0, 5).join(', ')}` : 'Live Radio Broadcast',
-        freq: s.bitrate ? `${s.bitrate} kbps` : 'Auto',
-        url: s.url_resolved,
-        category: 'Audio Stream',
-        isRadioStream: true
-      }));
-      
-      setRadioStations(prev => offset === 0 ? formatted : [...prev, ...formatted]);
-      setRadioOffset(offset);
-    } catch (e) {
-      console.error("Radio fetch failed", e);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (currentView === 'AUDIO' && radioStations.length === 0) {
-      loadRadioStations(0);
-    }
-  }, [currentView, radioStations.length, loadRadioStations]);
-  
-  
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-    }
-  }, [volume]);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      if (activeMedia && (!activeMedia.isVideo) && activeMedia.url) {
-        if (audioRef.current.src !== currentPlaybackUrl) {
-          audioRef.current.src = currentPlaybackUrl;
-        }
-        if (isPlaying) {
-          const playPromise = audioRef.current.play();
-          if (playPromise !== undefined) {
-            playPromise.catch(error => {
-              if (error.name !== 'AbortError' && error.name !== 'NotAllowedError') {
-                console.error("Playback error:", error);
-              }
-            });
-          }
-        } else {
-          audioRef.current.pause();
-        }
-      } else {
-        audioRef.current.pause();
-      }
-    }
-  }, [activeMedia, isPlaying]);
-
-  const handlePlayMedia = useCallback((item: any) => {
-    const mediaId = item.url || item.id;
-    if (activeMediaId === mediaId) {
-      if (audioRef.current && (!item.isVideo)) {
-        if (audioRef.current.paused) {
-          const playPromise = audioRef.current.play();
-          if (playPromise !== undefined) {
-            playPromise.catch(error => {
-              if (error.name !== 'AbortError' && error.name !== 'NotAllowedError') {
-                console.error("Playback error:", error);
-              }
-            });
-          }
-        }
-        else audioRef.current.pause();
-      } else {
-        setIsPlaying(!isPlaying);
-      }
-    } else {
-      setActiveMedia(item);
-      if (item.preRollAd) setAdState('PREROLL');
-      else setAdState('MAIN');
-      const isAutoplay = localStorage.getItem('nexus_autoplayEnabled') !== 'false';
-      setIsPlaying(isAutoplay);
-    }
-  }, [activeMediaId, isPlaying]);
-
-    const handleMediaEnded = useCallback(() => {
-    if (!activeMedia) {
-      setIsPlaying(false);
-      return;
-    }
-
-    if (adState === 'PREROLL') {
-      setAdState('MAIN');
-      return;
-    }
-    if (adState === 'MAIN' && activeMedia.postRollAd) {
-      setAdState('POSTROLL');
-      return;
-    }
-    
-    setAdState('NONE');
-
-    // First, see if we are a TV channel program
-    if (activeMedia.category === 'TV & Movies') {
-      let foundProg = false;
-      let allChannels = [...CHANNELS];
-      try {
-        const saved = localStorage.getItem('nexus_custom_channel');
-        if (saved) {
-          const customChannel = JSON.parse(saved);
-          if (customChannel && customChannel.programs) {
-            allChannels.push(customChannel);
-          }
-        }
-      } catch(e) {}
-      
-      for (const ch of allChannels) {
-        const progIndex = ch.programs.findIndex((p: any) => p.id === activeMedia.id);
-        if (progIndex !== -1) {
-          foundProg = true;
-          if (progIndex + 1 < ch.programs.length) {
-            handlePlayMedia({ ...ch.programs[progIndex + 1], category: 'TV & Movies' });
-            return;
-          }
-        }
-      }
-    }
-    
-    // Check if it's an audio/radio
-    if (activeMedia.category === 'Radio' || activeMedia.category === 'Music') {
-      const idx = AUDIO.findIndex(a => a.id === activeMedia.id);
-      if (idx !== -1 && idx + 1 < AUDIO.length) {
-        handlePlayMedia(AUDIO[idx + 1]);
-        return;
-      }
-    }
-    
-    // Check if it's a feed
-    if (activeMedia.category === 'Live Feed') {
-      // Need to grab current customFeeds from local storage to auto-play correctly
-      let feeds: any[] = [];
-      try {
-        const saved = localStorage.getItem('nexus_custom_feeds');
-        if (saved) feeds = JSON.parse(saved);
-      } catch(e) {}
-      
-      const idx = feeds.findIndex((f: any) => f.id === activeMedia.id);
-      if (idx !== -1 && idx + 1 < feeds.length) {
-        handlePlayMedia(feeds[idx + 1]);
-        return;
-      }
-    }
-    
-    // If no next item found, stop playing
-    setIsPlaying(false);
-  }, [activeMedia, adState, handlePlayMedia]);
-  
-  
-  
-  
-  
-
-
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept typing in inputs
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return;
-      }
-
-      switch (e.key.toLowerCase()) {
-        case 'f':
-          if (activeMedia?.isVideo && activeMedia?.url) {
-            playSound('select');
-            setIsFullscreen(prev => !prev);
-          }
-          break;
-        case 's':
-          if (isFullscreen) {
-            playSound('select');
-            setScaleMode(prev => prev === 'contain' ? 'cover' : 'contain');
-          }
-          break;
-        case ' ':
-          if (activeMedia) {
-            e.preventDefault();
-            playSound('select');
-            setIsPlaying(prev => !prev);
-          }
-          break;
-        case 'escape':
-          if (isFullscreen) {
-            playSound('select');
-            setIsFullscreen(false);
-          }
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeMedia, isFullscreen]);
 
   const handleBackToMenu = useCallback(() => { setCurrentView('MENU'); }, []);
-  const handleToggleFullscreen = useCallback(() => setIsFullscreen(true), []);
 
   return (
     <div className="min-h-screen font-sans selection:bg-accent/50 overflow-hidden flex flex-col bg-gradient-to-br from-canvas-start via-canvas-mid to-canvas-end">
@@ -599,6 +352,19 @@ export default function App() {
 
       </header>
 
+      
+      {playbackError && (
+        <div className="absolute top-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-8 fade-in duration-300">
+          <div className="bg-red-500/90 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 backdrop-blur-md">
+            <AlertTriangle className="w-5 h-5" />
+            <span className="font-bold tracking-wide">{playbackError}</span>
+            <button onClick={() => setPlaybackError(null)} className="ml-2 hover:bg-white/20 p-1 rounded-full transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col px-8 pb-8 overflow-hidden">
         
