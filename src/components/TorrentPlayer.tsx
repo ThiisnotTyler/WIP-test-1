@@ -1,6 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 import WebTorrent from 'webtorrent';
+
+function formatBytes(bytes: number, decimals = 2) {
+    if (!+bytes) return '0 B';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
+function formatTime(ms: number) {
+    if (!ms || ms === Infinity || isNaN(ms)) return 'Calculating...';
+    const seconds = Math.floor(ms / 1000) % 60;
+    const minutes = Math.floor(ms / (1000 * 60)) % 60;
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+}
 
 export const TorrentPlayer = ({ magnetUri }: { magnetUri: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -8,31 +27,44 @@ export const TorrentPlayer = ({ magnetUri }: { magnetUri: string }) => {
   const [progress, setProgress] = useState(0);
   const [peers, setPeers] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  
+  // Metrics
+  const [downloadSpeed, setDownloadSpeed] = useState(0);
+  const [uploadSpeed, setUploadSpeed] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+
   const clientRef = useRef<any>(null);
 
   useEffect(() => {
     let isMounted = true;
-
     try {
-      setStatus('Connecting to P2P swarm...');
+      setStatus('Connecting to P2P swarm (fetching metadata)...');
       const client = new WebTorrent();
       clientRef.current = client;
 
       client.add(magnetUri, (torrent: any) => {
           if (!isMounted) return;
-          setStatus('Metadata downloaded. Searching for video file...');
           
-          const file = torrent.files.find((f: any) => f.name.endsWith('.mp4') || f.name.endsWith('.webm') || f.name.endsWith('.mkv'));
+          setStatus('Moderating torrent contents...');
           
-          if (!file) {
-            setError('No playable video file found in this torrent. Browsers generally require .mp4 or .webm.');
+          // Automatically deselect all files in the torrent so we don't download everything
+          torrent.files.forEach((f: any) => f.deselect());
+          
+          // Find the first playable video file
+          const videoFile = torrent.files.find((f: any) => f.name.endsWith('.mp4') || f.name.endsWith('.webm') || f.name.endsWith('.mkv'));
+          
+          if (!videoFile) {
+            setError('Moderation Rejected: No playable video file found. Torrents must contain an .mp4 or .webm.');
+            client.destroy();
             return;
           }
 
-          setStatus(`Buffering: ${file.name}`);
+          // Approve ONLY the video file for download
+          videoFile.select();
+          setStatus(`Moderation Approved. Buffering: ${videoFile.name}`);
           
           if (videoRef.current) {
-             file.renderTo(videoRef.current, { autoplay: false, muted: false, maxBlobLength: 2 * 1000 * 1000 * 1000 }, (err: any) => {
+             videoFile.renderTo(videoRef.current, { autoplay: false, muted: false, maxBlobLength: 2 * 1000 * 1000 * 1000 }, (err: any) => {
                  if (err) console.error("WebTorrent renderTo error:", err);
              });
           }
@@ -41,18 +73,32 @@ export const TorrentPlayer = ({ magnetUri }: { magnetUri: string }) => {
               if (isMounted) setError(err.message || 'Torrent error');
           });
 
-          torrent.on('download', (bytes: number) => {
-            if (isMounted) {
+          // Throttle state updates slightly to prevent excessive re-renders
+          let lastUpdate = 0;
+          torrent.on('download', () => {
+            if (!isMounted) return;
+            const now = Date.now();
+            if (now - lastUpdate > 500) {
               setProgress(Math.round(torrent.progress * 100));
               setPeers(torrent.numPeers);
-              if (torrent.progress > 0.05) {
+              setDownloadSpeed(torrent.downloadSpeed);
+              setUploadSpeed(torrent.uploadSpeed);
+              setTimeRemaining(torrent.timeRemaining);
+              lastUpdate = now;
+              
+              if (torrent.progress > 0.05 && status !== 'Playing stream from peers') {
                  setStatus('Playing stream from peers');
               }
             }
           });
           
           torrent.on('done', () => {
-             if (isMounted) setStatus('Download complete (Seeding)');
+             if (isMounted) {
+               setStatus('Download complete (Seeding)');
+               setProgress(100);
+               setDownloadSpeed(0);
+               setTimeRemaining(0);
+             }
           });
         });
         
@@ -89,14 +135,30 @@ export const TorrentPlayer = ({ magnetUri }: { magnetUri: string }) => {
         {(!error && progress < 100 && status !== 'Playing stream from peers' && status !== 'Download complete (Seeding)') && (
            <div className="absolute inset-0 z-0 flex flex-col items-center justify-center bg-black/80">
               <Loader2 className="w-12 h-12 text-accent animate-spin mb-4" />
-              <div className="text-text-main font-bold mb-2">{status}</div>
+              <div className="text-text-main font-bold mb-2 flex items-center gap-2">
+                 {status.includes('Moderation Approved') && <ShieldCheck className="w-5 h-5 text-green-500" />}
+                 {status}
+              </div>
               <div className="text-text-dim text-sm">Progress: {progress}% | Peers: {peers}</div>
            </div>
         )}
       </div>
-      <div className="p-4 bg-panel-solid border-t border-panel-border flex justify-between items-center text-sm font-mono">
-        <span className="text-accent">{status}</span>
-        <span className="text-text-dim">Peers: {peers} | Progress: {progress}%</span>
+
+      <div className="p-4 bg-panel-solid border-t border-panel-border flex flex-col md:flex-row justify-between items-start md:items-center text-xs font-mono gap-4 md:gap-0">
+        <div className="flex items-center gap-2 text-accent">
+          {status.includes('Moderation Approved') && <ShieldCheck className="w-4 h-4 text-green-500" />}
+          <span>{status}</span>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-text-dim">
+          <span>Peers: <span className="text-text-main font-bold">{peers}</span></span>
+          <span>DL: <span className="text-text-main font-bold">{formatBytes(downloadSpeed)}/s</span></span>
+          <span>UL: <span className="text-text-main font-bold">{formatBytes(uploadSpeed)}/s</span></span>
+          {progress < 100 && (
+            <span>ETA: <span className="text-text-main font-bold">{formatTime(timeRemaining)}</span></span>
+          )}
+          <span>Prog: <span className="text-text-main font-bold">{progress}%</span></span>
+        </div>
       </div>
     </div>
   );

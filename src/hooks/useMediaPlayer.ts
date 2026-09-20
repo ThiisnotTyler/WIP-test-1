@@ -73,8 +73,6 @@ export function useMediaPlayer() {
                 console.error("Playback error:", error);
                 setPlaybackError("Stream unavailable or dead. Try another.");
                 setIsPlaying(false);
-                setPlaybackError("Stream unavailable or dead. Try another.");
-                setIsPlaying(false);
               }
             });
           }

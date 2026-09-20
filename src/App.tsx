@@ -11,6 +11,8 @@ import { getRadioServer } from './services/radioBrowser';
 import { useMediaPlayer } from './hooks/useMediaPlayer';
 
 
+import { useSettings } from './context/SettingsContext';
+
 import { FEEDS, AUDIO, CHANNELS } from './data/mockData';
 
 import { MenuOption } from './components/MenuOption';
@@ -25,67 +27,14 @@ import { GlobalClock } from "./components/GlobalClock";
 import { BroadcastStudio } from './components/BroadcastStudio';
 
 export default function App() {
-  const [ageRestrictedMode, setAgeRestrictedMode] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('nexus_ageRestrictedMode');
-      return saved !== null ? JSON.parse(saved) : true;
-    } catch {
-      return true;
-    }
-  });
+  const {
+    ageRestrictedMode,
+    safeMode,
+    curatedMode,
+    appTheme,
+    userTier
+  } = useSettings();
 
-  useEffect(() => {
-    localStorage.setItem('nexus_ageRestrictedMode', JSON.stringify(ageRestrictedMode));
-  }, [ageRestrictedMode]);
-    const [safeMode, setSafeMode] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('nexus_safemode');
-      return saved !== null ? JSON.parse(saved) : true;
-    } catch {
-      return true;
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('nexus_safemode', JSON.stringify(safeMode));
-  }, [safeMode]);
-
-  const [curatedMode, setCuratedMode] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('nexus_curatedmode');
-      return saved !== null ? JSON.parse(saved) : true;
-    } catch {
-      return true;
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('nexus_curatedmode', JSON.stringify(curatedMode));
-  }, [curatedMode]);
-
-
-
-  const [appTheme, setAppTheme] = useState<string>(() => {
-    return localStorage.getItem('nexus_appTheme') || 'original';
-  });
-  
-  useEffect(() => {
-    localStorage.setItem('nexus_appTheme', appTheme);
-    document.documentElement.setAttribute('data-theme', appTheme);
-  }, [appTheme]);
-
-  const [userTier, setUserTier] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('nexus_userTier');
-      return saved !== null ? Number(saved) : 3;
-    } catch {
-      return 3;
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('nexus_userTier', String(userTier));
-  }, [userTier]);
   const [currentView, setCurrentView] = useState<'MENU' | 'FEEDS' | 'TV_VIDEO' | 'AUDIO' | 'SEARCH' | 'FAVORITES' | 'SETTINGS' | 'STUDIO' | 'P2P'>('MENU');
   const [favorites, setFavorites] = useState<any[]>([]);
   const [customFeeds, setCustomFeeds] = useState<any[]>([]);
@@ -521,16 +470,6 @@ export default function App() {
         {currentView === 'SETTINGS' && (
           <SettingsView 
             onBack={handleBackToMenu} 
-            safeMode={safeMode} 
-            setSafeMode={setSafeMode}
-            ageRestrictedMode={ageRestrictedMode}
-            setAgeRestrictedMode={setAgeRestrictedMode}
-            curatedMode={curatedMode}
-            setCuratedMode={setCuratedMode}
-            userTier={userTier}
-            setUserTier={setUserTier}
-            appTheme={appTheme}
-            setAppTheme={setAppTheme}
           />
         )}
 

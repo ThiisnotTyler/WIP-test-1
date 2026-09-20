@@ -1,8 +1,17 @@
 import React from 'react';
 import { ChevronLeft, Volume2 } from 'lucide-react';
 import { playSound } from '../utils/audio';
+import { useSettings } from '../context/SettingsContext';
 
-export const SettingsView = React.memo(function SettingsView({ onBack, safeMode, setSafeMode, curatedMode, setCuratedMode, ageRestrictedMode, setAgeRestrictedMode, userTier, setUserTier, appTheme, setAppTheme }: any) {
+export const SettingsView = React.memo(function SettingsView({ onBack }: any) {
+  const { 
+    safeMode, setSafeMode, 
+    curatedMode, setCuratedMode, 
+    ageRestrictedMode, setAgeRestrictedMode, 
+    userTier, setUserTier, 
+    appTheme, setAppTheme 
+  } = useSettings();
+  
   const [tab, setTab] = React.useState<'SETTINGS' | 'MESSAGES'>('SETTINGS');
 
   const [uiMuted, setUiMuted] = React.useState(() => localStorage.getItem('nexus_uiMuted') === 'true');
