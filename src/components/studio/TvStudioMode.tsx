@@ -5,6 +5,7 @@ import { StudioProgram } from '../../hooks/useStudioStorage';
 import { GlobalClock } from '../GlobalClock';
 import { ProgramSchedule, DEFAULT_DAYS } from './ProgramSchedule';
 import { StudioForm } from './StudioForm';
+import { toast } from '../../context/ToastContext';
 
 export interface TvStudioModeProps {
   channelNumber: string;
@@ -49,7 +50,7 @@ export function TvStudioMode({
   const handleAddProgram = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle || !newUrl) {
-      alert('Failed: Title and Stream URL are required.');
+      toast.error('Failed: Title and Stream URL are required.');
       return;
     }
 
@@ -58,7 +59,7 @@ export function TvStudioMode({
     const nEnd = nStart + parseInt(newDur);
 
     if (nEnd > 24 * 60) {
-      alert('Program duration extends past midnight. Please adjust the duration or start time.');
+      toast.error('Program duration extends past midnight. Please adjust the duration or start time.');
       return;
     }
 
@@ -71,7 +72,7 @@ export function TvStudioMode({
     });
 
     if (hasOverlap) {
-      alert('This program conflicts with an existing program on this day. Please choose a different time.');
+      toast.error('This program conflicts with an existing program on this day. Please choose a different time.');
       return;
     }
 
@@ -95,7 +96,7 @@ export function TvStudioMode({
     setNewDur('30');
     setNewPreRoll('');
     setNewPostRoll('');
-    alert('Program scheduled successfully!');
+    toast.success('Program scheduled successfully!');
   };
 
   return (

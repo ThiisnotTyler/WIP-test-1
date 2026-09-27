@@ -3,6 +3,7 @@ import { Network, Trash2 } from 'lucide-react';
 import { playSound } from '../../utils/audio';
 import { StudioMagnet } from '../../hooks/useStudioStorage';
 import { StudioForm } from './StudioForm';
+import { toast } from '../../context/ToastContext';
 
 export interface P2pStudioModeProps {
   p2pMagnets: StudioMagnet[];
@@ -17,9 +18,12 @@ export function P2pStudioMode({ p2pMagnets, onAddMagnet, onRemoveMagnet }: P2pSt
 
   const handleAddMagnet = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle || !newUrl) return;
+    if (!newTitle || !newUrl) {
+      toast.error('Title and Magnet URI are required.');
+      return;
+    }
     if (!newUrl.startsWith('magnet:')) {
-      alert('Must be a valid magnet link starting with magnet:');
+      toast.error('Must be a valid magnet link starting with magnet:');
       return;
     }
     playSound('nav');
@@ -33,7 +37,7 @@ export function P2pStudioMode({ p2pMagnets, onAddMagnet, onRemoveMagnet }: P2pSt
     setNewTitle('');
     setNewUrl('');
     setNewDesc('');
-    alert('P2P Magnet Swarm approved and published!');
+    toast.success('P2P Magnet Swarm approved and published!');
   };
 
   return (

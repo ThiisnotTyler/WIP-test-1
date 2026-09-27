@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Tv, ChevronDown, ChevronUp, Play } from 'lucide-react';
 import { playSound } from '../../utils/audio';
+import { toast } from '../../context/ToastContext';
 
 export interface PendingQueueItem {
   id: string;
@@ -56,9 +57,9 @@ export function ModerateStudioMode({ onPlayAudio }: ModerateStudioModeProps) {
 
   const handleApprove = (id: string) => {
     playSound('nav');
-    alert(
-      `Approved and added to public directory. ${
-        isAgeRestricted ? '(Marked as Age Restricted 18+)' : ''
+    toast.success(
+      `Approved and added to public directory.${
+        isAgeRestricted ? ' (Marked as Age Restricted 18+)' : ''
       }`
     );
     setPendingQueue((q) => q.filter((item) => item.id !== id));
@@ -68,10 +69,10 @@ export function ModerateStudioMode({ onPlayAudio }: ModerateStudioModeProps) {
   const confirmDeny = (id: string) => {
     playSound('nav');
     if (!denyReason.trim()) {
-      alert('Please provide a reason for denial.');
+      toast.error('Please provide a reason for denial.');
       return;
     }
-    alert(`Denied. Reason sent to user: ${denyReason}`);
+    toast.info(`Denied. Reason sent to user: ${denyReason}`);
     setPendingQueue((q) => q.filter((item) => item.id !== id));
     setDenyingId(null);
     setIsAgeRestricted(false);

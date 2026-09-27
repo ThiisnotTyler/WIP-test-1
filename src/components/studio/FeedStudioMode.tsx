@@ -3,6 +3,7 @@ import { Tv, Trash2 } from 'lucide-react';
 import { playSound } from '../../utils/audio';
 import { StudioFeed } from '../../hooks/useStudioStorage';
 import { StudioForm } from './StudioForm';
+import { toast } from '../../context/ToastContext';
 
 export interface FeedStudioModeProps {
   feeds: StudioFeed[];
@@ -17,7 +18,10 @@ export function FeedStudioMode({ feeds, onAddFeed, onRemoveFeed }: FeedStudioMod
 
   const handleAddFeed = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle || !newUrl) return;
+    if (!newTitle || !newUrl) {
+      toast.error('Title and Stream URL are required.');
+      return;
+    }
     playSound('nav');
     const newFeed: StudioFeed = {
       id: 'cf_' + Date.now(),
@@ -33,7 +37,7 @@ export function FeedStudioMode({ feeds, onAddFeed, onRemoveFeed }: FeedStudioMod
     setNewTitle('');
     setNewUrl('');
     setNewDesc('');
-    alert('Live feed broadcast updated!');
+    toast.success('Live feed broadcast updated!');
   };
 
   return (

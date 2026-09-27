@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { playSound } from '../utils/audio';
 import { useStudioStorage } from '../hooks/useStudioStorage';
+import { toast } from '../context/ToastContext';
 import { TvStudioMode } from './studio/TvStudioMode';
 import { FeedStudioMode } from './studio/FeedStudioMode';
 import { P2pStudioMode } from './studio/P2pStudioMode';
@@ -37,7 +38,7 @@ export const BroadcastStudio = React.memo(function BroadcastStudio({
   const handleSave = () => {
     playSound('select');
     saveCustomChannel();
-    alert('Channel broadcast updated! It will now appear in the TV Guide.');
+    toast.success('Channel broadcast updated! It will now appear in the TV Guide.');
   };
 
   return (
