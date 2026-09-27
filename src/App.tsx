@@ -1,10 +1,9 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
-  Network, Play, Volume2, Maximize, Minimize, Settings, SignalHigh, 
-  Activity, Radio, Menu, Video, Music, Info, Search as SearchIcon, User, Tv, Heart, Pause, X, AlertTriangle 
+  Network, Play, Settings, SignalHigh, 
+  Activity, Radio, Menu, Video, Music, Info, Search as SearchIcon, User, Tv, Heart, X, AlertTriangle 
 } from 'lucide-react';
 
-import VideoPlayer from './VideoPlayer';
 import { playSound } from './utils/audio';
 import { filterSafeContent, filterAgeRestricted } from './utils/contentFilter';
 import { getRadioServer } from './services/radioBrowser';
@@ -25,6 +24,7 @@ import { P2PView } from './components/P2PView';
 import { RadioView } from './components/RadioView';
 import { GlobalClock } from "./components/GlobalClock";
 import { BroadcastStudio } from './components/BroadcastStudio';
+import { FloatingPlayer } from './components/player/FloatingPlayer';
 
 export default function App() {
   const {
@@ -116,187 +116,33 @@ export default function App() {
         </div>
         
         <div className="flex flex-col items-end gap-4 z-50">
-          {/* PIP Video Preview */}
-        {activeMedia ? (
-          <div className={
-            isFullscreen
-              ? `fixed inset-0 z-[100] bg-video-bg flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300 ${!showUI ? "cursor-none" : ""}`
-              : "hidden md:flex flex-col items-end animate-in fade-in zoom-in duration-700 z-50"
-          }>
-            <div 
-              onClick={() => {
-                if (!isFullscreen) {
-                  playSound('select');
-                  setIsPipExpanded(!isPipExpanded);
-                }
-              }}
-              onDoubleClick={() => {
-                if (isFullscreen) {
-                  playSound('select');
-                  setScaleMode(prev => prev === 'contain' ? 'cover' : 'contain');
-                }
-              }}
-              className={
-                isFullscreen
-                  ? "w-full h-full relative"
-                  : `${isPipExpanded ? 'w-[480px]' : 'w-64'} aspect-video bg-video-bg rounded-xl border-4 ${isPlaying ? 'border-accent' : 'border-panel-border'} shadow-2xl overflow-hidden relative group cursor-pointer transition-all duration-300`
-              }
-            >
-              {/* Actual Video Player Background */}
-              {activeMedia.isVideo && activeMedia.url && (
-                 <div className={`absolute inset-0 z-0 bg-video-bg overflow-hidden flex items-center justify-center`}>
-                    <VideoPlayer ref={videoPlayerRef} onProgress={(t: number) => { if (!isSeeking) setPlayedSeconds(t); }} onDuration={setDuration} onEnded={handleMediaEnded} className={`relative z-10 w-full h-full transition-all duration-500 ${isFullscreen ? (scaleMode === 'contain' ? 'object-contain' : 'object-cover') : 'object-cover pointer-events-none'}`} 
-                      url={currentPlaybackUrl}
-                      loop={false} 
-                      playing={isPlaying} 
-                      width="100%" 
-                      height="100%" 
-                      volume={volume}
-                      controls={false}
-                    />
-                 </div>
-              )}
-
-              {/* PIP Overlay Content - Hidden in Fullscreen */}
-              {!isFullscreen && (
-                <>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10 pointer-events-none" />
-                  <div className="absolute bottom-2 left-3 z-20 w-full pr-6 pointer-events-none">
-                    <div className="text-xs font-extrabold text-accent drop-shadow-md flex items-center gap-2">
-                      {isPlaying ? (
-                        isAdPlaying ? <span className="text-yellow-500">ADVERTISEMENT</span> : <span className="flex items-center gap-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> LIVE
-                        </span>
-                      ) : 'PAUSED'}
-                    </div>
-                    <div className="text-[11px] text-text-main font-extrabold truncate pr-2">{activeMedia.title}</div>
-                    <div className="text-[9px] text-text-dim truncate pr-2">{activeMedia.category || 'Media'}</div>
-                  </div>
-                  
-                  {/* Overlay Controls */}
-                  <div className="absolute inset-0 flex items-center justify-center z-30 opacity-0 group-hover:opacity-100 transition-opacity bg-panel">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        playSound('select');
-                        handlePlayMedia(activeMedia);
-                      }}
-                      className="w-14 h-14 rounded-full bg-white/20 hover:bg-accent text-text-main hover:text-text-inv flex items-center justify-center transition-colors backdrop-blur shadow-lg"
-                    >
-                      {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
-                    </button>
-                    {!isFullscreen && activeMedia.isVideo && activeMedia.url && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          playSound('select');
-                          setIsFullscreen(true);
-                        }}
-                        className="absolute top-2 right-2 text-text-main p-2 hover:bg-accent hover:text-text-inv rounded-full transition-colors"
-                      >
-                        <Maximize className="w-5 h-5 drop-shadow-md" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Visualizer if Playing */}
-                  {isPlaying && (!activeMedia.isVideo) && (
-                     <div className="absolute bottom-0 left-0 right-0 h-1/2 flex items-end justify-center gap-1 opacity-50 z-0">
-                       {[...Array(isPipExpanded ? 32 : 16)].map((_, i) => (
-                         <div key={i} className="w-1.5 bg-accent rounded-t-sm animate-[pulse_0.5s_ease-in-out_infinite_alternate]" style={{ height: `${20 + Math.random() * 80}%`, animationDelay: `${i * 0.05}s` }} />
-                       ))}
-                     </div>
-                  )}
-                  
-                  <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '8px 8px' }} />
-                </>
-              )}
-              
-              {/* Fullscreen Overlay Content */}
-              {isFullscreen && (
-                <div 
-                  className={`absolute bottom-0 left-0 right-0 p-8 pt-24 bg-gradient-to-t from-black via-black/80 to-transparent flex flex-col gap-6 z-[110] transition-opacity duration-500 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
-                  onClick={(e) => e.stopPropagation()}
-                >
-                   {/* Scrub Bar */}
-                   {duration > 0 && (
-                     <div className="flex items-center gap-4 w-full">
-                       <span className="text-text-dim text-sm font-extrabold font-mono">{formatTime(playedSeconds)}</span>
-                       <input 
-                         type="range" min="0" max={duration || 1} step="0.1"
-                         value={playedSeconds}
-                         onChange={handleSeekChange}
-                         onMouseDown={() => setIsSeeking(true)}
-                         onMouseUp={() => setIsSeeking(false)}
-                         onTouchStart={() => setIsSeeking(true)}
-                         onTouchEnd={() => setIsSeeking(false)}
-                         className="flex-1 accent-accent h-1.5 bg-white/20 rounded-full appearance-none outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(var(--theme-accent-rgb),0.5)]"
-                       />
-                       <span className="text-text-dim text-sm font-extrabold font-mono">{formatTime(duration)}</span>
-                     </div>
-                   )}
-                   
-                   <div className="flex items-center justify-between">
-                     <div className="flex items-center gap-6">
-                       <button onClick={(e) => { e.stopPropagation(); playSound('select'); setIsPlaying(!isPlaying); }} className="text-text-main hover:text-accent transition-colors">
-                         {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current ml-1" />}
-                       </button>
-                       <div className="flex items-center gap-3">
-                         <Volume2 className="w-6 h-6 text-text-main drop-shadow-md" />
-                         <input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} className="w-32 accent-accent h-1.5 bg-white/20 rounded-full appearance-none outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent" />
-                       </div>
-                     </div>
-                     <div className="flex items-center gap-4">
-                       <button
-                         onClick={(e) => {
-                            e.stopPropagation();
-                            playSound('select');
-                            setScaleMode(prev => prev === 'contain' ? 'cover' : 'contain');
-                         }}
-                         className="text-text-main hover:text-accent transition-colors bg-panel p-4 rounded-full backdrop-blur border border-panel-border"
-                         title={scaleMode === 'contain' ? "Fill Screen" : "Fit to Screen"}
-                       >
-                         {scaleMode === 'contain' ? <Maximize className="w-8 h-8" /> : <Minimize className="w-8 h-8" />}
-                       </button>
-                       <button
-                         onClick={(e) => {
-                            e.stopPropagation();
-                            playSound('select');
-                            setIsFullscreen(false);
-                         }}
-                         className="text-text-main hover:text-red-500 transition-colors bg-panel p-4 rounded-full backdrop-blur border border-panel-border"
-                         title="Exit Fullscreen"
-                       >
-                         <X className="w-8 h-8" />
-                       </button>
-                     </div>
-                   </div>
-                </div>
-              )}
-
-            </div>
-            
-            {/* PIP Volume Bar (Hidden in Fullscreen) */}
-            {!isFullscreen && (
-              <div className="mt-3 bg-video-overlay backdrop-blur-md rounded-full px-4 py-2.5 border border-panel-border flex items-center gap-3 shadow-2xl transition-all duration-300">
-                <Volume2 className="w-4 h-4 text-text-dim" />
-                <input 
-                  type="range" min="0" max="1" step="0.01" 
-                  value={volume} 
-                  onChange={(e) => setVolume(parseFloat(e.target.value))} 
-                  className="w-24 accent-accent h-1 bg-white/20 rounded-full appearance-none outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent" 
-                />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className={`hidden md:flex flex-col items-end animate-in fade-in zoom-in duration-700 opacity-50 ${currentView !== 'MENU' ? 'hidden md:hidden' : ''}`}>
-            <div className="w-64 aspect-video bg-panel rounded-xl border-4 border-panel-border overflow-hidden relative flex items-center justify-center">
-               <span className="text-text-main/30 text-xs font-extrabold tracking-widest">NO SIGNAL</span>
-               <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '8px 8px' }} />
-            </div>
-          </div>
-        )}
+          <FloatingPlayer
+            activeMedia={activeMedia}
+            currentPlaybackUrl={currentPlaybackUrl}
+            isPlaying={isPlaying}
+            isAdPlaying={isAdPlaying}
+            isFullscreen={isFullscreen}
+            setIsFullscreen={setIsFullscreen}
+            isPipExpanded={isPipExpanded}
+            setIsPipExpanded={setIsPipExpanded}
+            scaleMode={scaleMode}
+            setScaleMode={setScaleMode}
+            showUI={showUI}
+            volume={volume}
+            setVolume={setVolume}
+            videoPlayerRef={videoPlayerRef}
+            duration={duration}
+            setDuration={setDuration}
+            playedSeconds={playedSeconds}
+            setPlayedSeconds={setPlayedSeconds}
+            isSeeking={isSeeking}
+            setIsSeeking={setIsSeeking}
+            handleSeekChange={handleSeekChange}
+            handleMediaEnded={handleMediaEnded}
+            handlePlayMedia={handlePlayMedia}
+            formatTime={formatTime}
+            currentView={currentView}
+          />
         </div>
 
       </header>
