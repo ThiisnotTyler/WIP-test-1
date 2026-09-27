@@ -75,13 +75,13 @@ export const SettingsView = React.memo(function SettingsView({ onBack }: any) {
                    </div>
                    <div className="flex gap-2">
                      <button
-                       onClick={() => { playSound('select'); setAppTheme('original'); }}
+                       onClick={() => { localStorage.setItem('nexus_theme_user_set', 'true'); playSound('select'); setAppTheme('original'); }}
                        className={`px-4 py-2 rounded-xl border-2 font-bold transition-all ${appTheme === 'original' ? 'border-accent bg-accent/20 text-accent' : 'border-panel-border text-text-dim hover:text-text-main'}`}
                      >
                        Nexus Original
                      </button>
                      <button
-                       onClick={() => { playSound('select'); setAppTheme('frutiger'); }}
+                       onClick={() => { localStorage.setItem('nexus_theme_user_set', 'true'); playSound('select'); setAppTheme('frutiger'); }}
                        className={`px-4 py-2 rounded-xl border-2 font-bold transition-all ${appTheme === 'frutiger' ? 'border-accent bg-accent/20 text-accent' : 'border-panel-border text-text-dim hover:text-text-main'}`}
                      >
                        Frutiger Aero

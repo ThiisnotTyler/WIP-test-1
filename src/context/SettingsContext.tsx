@@ -56,7 +56,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [curatedMode]);
 
   const [appTheme, setAppTheme] = useState<string>(() => {
-    return localStorage.getItem('nexus_appTheme') || 'original';
+    try {
+      const userHasExplicitlySetTheme = localStorage.getItem('nexus_theme_user_set');
+      if (userHasExplicitlySetTheme) {
+        return localStorage.getItem('nexus_appTheme') || 'frutiger';
+      }
+      return 'frutiger';
+    } catch {
+      return 'frutiger';
+    }
   });
   
   useEffect(() => {

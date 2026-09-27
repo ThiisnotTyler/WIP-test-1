@@ -111,7 +111,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-text-main tracking-tight drop-shadow-md">Nexus Central</h1>
-            <p className="text-text-main/60 font-medium tracking-wide text-sm">Media & Surveillance DVR</p>
+            <p className="text-text-main/60 font-medium tracking-wide text-sm">Media in your hands</p>
           </div>
         </div>
         
